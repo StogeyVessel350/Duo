@@ -1,0 +1,105 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node / JS
+node_modules/
+dist/
+build/
+.next/
+.turbo/
+out/
+*.tsbuildinfo
+.pnpm-store/
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Go
+/bin/
+/pkg/
+*.test
+*.out
+/vendor/
+
+# Rust
+target/
+Cargo.lock
+
+# Firmware
+/firmware/**/build/
+/firmware/**/.pio/
+/firmware/**/sdkconfig.old
+/firmware/**/managed_components/
+/firmware/**/zephyr/build/
+
+# React Native / Mobile
+# iOS
+/mobile/ios/Pods/
+/mobile/ios/build/
+/mobile/ios/DerivedData/
+/mobile/ios/*.xcworkspace/xcuserdata/
+/mobile/ios/*.xcodeproj/xcuserdata/
+# Android
+/mobile/android/.gradle/
+/mobile/android/build/
+/mobile/android/app/build/
+/mobile/android/local.properties
+/mobile/android/*.keystore
+!/mobile/android/debug.keystore
+# Metro
+.metro-health-check*
+
+# ML
+/ml/**/mlruns/
+/ml/**/wandb/
+/ml/**/*.ckpt
+/ml/**/*.pt
+/ml/**/*.onnx
+/ml/**/checkpoints/
+/ml/datasets/raw/
+/ml/datasets/processed/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+!*.pub.key
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+
+# Logs
+logs/
+*.log
+
+# Coverage / test output
+coverage/
+/test-results/
+/playwright-report/

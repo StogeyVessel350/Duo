@@ -1,0 +1,15 @@
+designator,part_number,description,qty_per_half,unit_cost_usd,vendor,lifecycle,datasheet_url
+U1,XIAO-ESP32-C3,MCU module BLE5.0 + unused WiFi,1,5.00,Seeed,Active,https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/
+U2,LSM6DSO32TR,6-axis IMU ±32g / ±2000dps,1,3.50,STMicroelectronics,Active,https://www.st.com/en/mems-and-sensors/lsm6dso32.html
+BT1,LP503035,3.7V 300mAh LiPo,1,3.00,Generic,Active,
+U3,DRV5032DU,Hall sensor omnipolar digital,1,0.45,Texas Instruments,Active,https://www.ti.com/product/DRV5032
+SW1,SKTDADE010,Tactile switch 6x6mm w/ boot,1,0.50,Alps Alpine,Active,
+U4,MCP73831T-2ACI/OT,Li-ion charge controller 500mA,1,0.60,Microchip,Active,https://www.microchip.com/en-us/product/mcp73831
+PP1-2,POGO-1.5MM,Spring contact pins gold,2,0.75,Mill-Max,Active,
+D1,1N5819W,Schottky diode reverse polarity,1,0.10,Onsemi,Active,
+M1-4,N42-D5x2,Neodymium disc magnet 5x2mm,4,0.50,K&J Magnetics,Active,
+PCB,DUO-HALF-MVP-V0,2-layer FR-4 PCB,1,2.00,JLCPCB,Prototype,
+PASSIVES,VARIOUS,R/C/L assortment,~30,1.00,Various,Active,
+J1,JST-PH-2,Battery connector,1,0.40,JST,Active,
+ENCL,DUO-HALF-MVP-ENCL,SLA printed housing post-processed,1,6.00,Internal,Prototype,
+ASSY,ASSEMBLY,Pick-and-place + hand assembly,1,5.00,Internal,,

@@ -1,0 +1,39 @@
+name: ml-ai
+
+on:
+  push:
+    branches: [main]
+    paths: ['ml/**', 'ai-inference/**', '.github/workflows/ml-ai.yml']
+  pull_request:
+    paths: ['ml/**', 'ai-inference/**', '.github/workflows/ml-ai.yml']
+
+jobs:
+  ai-inference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: |
+          cd ai-inference
+          pip install -e ".[dev]"
+      - name: Lint
+        run: cd ai-inference && ruff check src tests
+      - name: Typecheck
+        run: cd ai-inference && mypy src
+      - name: Test
+        run: cd ai-inference && pytest
+
+  ml-pipelines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: pip install ruff
+      - name: Lint
+        run: ruff check ml/

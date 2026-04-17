@@ -1,0 +1,55 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', '.github/workflows/backend.yml']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: duo_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+      - name: Vet
+        run: cd backend && go vet ./...
+      - name: Test
+        env:
+          DATABASE_URL: postgres://postgres:test@localhost:5432/duo_test?sslmode=disable
+          REDIS_URL: redis://localhost:6379
+        run: cd backend && go test -race -cover ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Build api
+        run: cd backend && go build -o bin/api ./api/cmd
+      - name: Build ws
+        run: cd backend && go build -o bin/ws ./ws/cmd
+      - name: Build ingest
+        run: cd backend && go build -o bin/ingest ./ingest/cmd
