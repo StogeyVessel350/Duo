@@ -2,7 +2,7 @@
  * DUO MVP firmware
  *
  * Target:    Seeed XIAO ESP32-C3
- * Sensor:    LSM6DSO32 (I2C, SparkFun/Adafruit breakout)
+ * Sensor:    MPU-6050 / GY-521 breakout (I²C)
  * Protocol:  Nordic UART Service (NUS) — advertises as "DUO-mvp"
  *            Emits a 12-byte IMU frame at ~100 Hz on the TX characteristic.
  *
@@ -10,30 +10,37 @@
  *   int16 ax, ay, az  in milli-g     (1 g = 1000)
  *   int16 gx, gy, gz  in milli-dps   (1 dps = 1000)
  *
+ * NOTE: MPU-6050 accelerometer tops out at ±16 g. Heavy barbell drops
+ * may clip. Acceptable for initial prototyping; swap for LSM6DSO32 when
+ * moving to the proper MVP hardware.
+ *
  * This is the minimum viable firmware — just stream raw IMU over BLE.
  * Rep detection, power management, attach sensor, etc. come later.
  *
  * Arduino IDE setup:
  *   Board:  "XIAO_ESP32C3" (under Seeed esp32 boards)
  *   Libraries:
- *     - Sparkfun 6DoF IMU Breakout LSM6DSO32   (by SparkFun)
- *       Library manager search: "SparkFun 6DoF LSM6DSO"
- *     - NimBLE-Arduino                           (by h2zero)
+ *     - MPU6050 by Electronic Cats
+ *       Library manager search: "MPU6050" → pick "by Electronic Cats"
+ *     - NimBLE-Arduino              (by h2zero)
  *       Library manager search: "NimBLE-Arduino"
  *   Partition scheme: default
  *   USB CDC on boot: Enabled (for Serial monitor)
  *
- * Wiring (XIAO ESP32-C3  ↔  LSM6DSO32 breakout):
- *   3V3   ↔  VIN / 3V3
+ * Wiring (XIAO ESP32-C3  ↔  GY-521):
+ *   3V3   ↔  VCC
  *   GND   ↔  GND
  *   GPIO6 (SDA, D4)  ↔  SDA
  *   GPIO7 (SCL, D5)  ↔  SCL
+ *   AD0 — leave unconnected or tie to GND (I²C address 0x68)
+ *   INT — not used
  */
 
 #include <Arduino.h>
 #include <Wire.h>
 #include <NimBLEDevice.h>
-#include "SparkFunLSM6DSO.h"
+#include "I2Cdev.h"
+#include "MPU6050.h"
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 static const char *DEVICE_NAME   = "DUO-mvp";
@@ -46,7 +53,7 @@ static const uint32_t SAMPLE_US  = 1000000UL / SAMPLE_HZ;
 #define NUS_RX_UUID      "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 
 // ─── Globals ─────────────────────────────────────────────────────────────────
-LSM6DSO imu;
+MPU6050 imu;
 NimBLEServer         *bleServer   = nullptr;
 NimBLECharacteristic *txChar      = nullptr;
 bool                  connected   = false;
@@ -113,20 +120,20 @@ void setup() {
   Wire.setClock(400000);
 
   // IMU
-  if (!imu.begin()) {
-    Serial.println("[IMU] LSM6DSO32 not found — check wiring/address");
+  imu.initialize();
+  if (!imu.testConnection()) {
+    Serial.println("[IMU] MPU-6050 not found — check wiring (VCC=3V3, SDA=D4, SCL=D5)");
     while (1) {
       digitalWrite(LED_BUILTIN, LOW);  delay(100);
       digitalWrite(LED_BUILTIN, HIGH); delay(100);
     }
   }
-  imu.initialize(BASIC_SETTINGS);
-  // Override defaults for our use case
-  imu.setAccelRange(32);        // ±32 g — survives barbell drops (if using DSO32 variant)
-  imu.setAccelDataRate(104);    // 104 Hz ≈ our target 100 Hz
-  imu.setGyroRange(2000);       // ±2000 dps
-  imu.setGyroDataRate(104);
-  Serial.println("[IMU] OK");
+  imu.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);  // ±16 g — MPU-6050 maximum
+  imu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);  // ±2000 dps
+  // 98 Hz DLPF → internal gyro rate = 1 kHz; rate divisor 9 → output = 1000/(1+9) = 100 Hz
+  imu.setDLPFMode(MPU6050_DLPF_BW_98);
+  imu.setRate(9);
+  Serial.println("[IMU] MPU-6050 OK  (accel ±16g, gyro ±2000dps, ~100Hz)");
 
   // BLE
   NimBLEDevice::init(DEVICE_NAME);
@@ -167,12 +174,16 @@ void loop() {
   if (connected && (nowUs - lastSendUs) >= SAMPLE_US) {
     lastSendUs += SAMPLE_US;
 
-    float ax = imu.readFloatAccelX();   // g
-    float ay = imu.readFloatAccelY();
-    float az = imu.readFloatAccelZ();
-    float gx = imu.readFloatGyroX();    // dps
-    float gy = imu.readFloatGyroY();
-    float gz = imu.readFloatGyroZ();
+    int16_t ax_raw, ay_raw, az_raw, gx_raw, gy_raw, gz_raw;
+    imu.getMotion6(&ax_raw, &ay_raw, &az_raw, &gx_raw, &gy_raw, &gz_raw);
+
+    // ±16 g  → 2048 LSB/g;  ±2000 dps → 16.4 LSB/dps
+    float ax = ax_raw / 2048.0f;
+    float ay = ay_raw / 2048.0f;
+    float az = az_raw / 2048.0f;
+    float gx = gx_raw / 16.4f;
+    float gy = gy_raw / 16.4f;
+    float gz = gz_raw / 16.4f;
 
     packFrame(ax, ay, az, gx, gy, gz);
     txChar->setValue(frame, sizeof(frame));
