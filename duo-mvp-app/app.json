@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "DUO",
+    "slug": "duo-mvp-app",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "duo",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.duo.mvp",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "DUO uses Bluetooth to connect to your sensor.",
+        "NSBluetoothPeripheralUsageDescription": "DUO uses Bluetooth to connect to your sensor.",
+        "UIBackgroundModes": ["bluetooth-central"]
+      }
+    },
+    "android": {
+      "package": "com.duo.mvp",
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["peripheral", "central"],
+          "bluetoothAlwaysPermission": "DUO uses Bluetooth to connect to your sensor."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": { "deploymentTarget": "15.1" },
+          "android": { "minSdkVersion": 26, "compileSdkVersion": 35 }
+        }
+      ]
+    ]
+  }
+}
