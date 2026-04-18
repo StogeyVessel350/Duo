@@ -27,6 +27,9 @@ export const DEVICE_NAME_PREFIX = 'DUO';
 // Sample rate assumed when interpreting timestamps
 export const SAMPLE_RATE_HZ = 100;
 
+// Backend API
+export const API_BASE_URL = 'https://superb-analysis-production-a657.up.railway.app';
+
 // Chart rendering
 export const CHART_WINDOW_SAMPLES = 200; // ~2 seconds at 100 Hz
 export const CHART_FPS = 30;             // visual update rate

@@ -5,7 +5,7 @@
     "version": "0.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "scheme": "duo",
     "ios": {
       "supportsTablet": false,
@@ -13,7 +13,9 @@
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "DUO uses Bluetooth to connect to your sensor.",
         "NSBluetoothPeripheralUsageDescription": "DUO uses Bluetooth to connect to your sensor.",
-        "UIBackgroundModes": ["bluetooth-central"]
+        "UIBackgroundModes": [
+          "bluetooth-central"
+        ]
       }
     },
     "android": {
@@ -32,17 +34,26 @@
         "react-native-ble-plx",
         {
           "isBackgroundEnabled": true,
-          "modes": ["peripheral", "central"],
+          "modes": [
+            "peripheral",
+            "central"
+          ],
           "bluetoothAlwaysPermission": "DUO uses Bluetooth to connect to your sensor."
         }
       ],
       [
         "expo-build-properties",
         {
-          "ios": { "deploymentTarget": "15.1" },
-          "android": { "minSdkVersion": 26, "compileSdkVersion": 35 }
+          "ios": {
+            "deploymentTarget": "15.1"
+          },
+          "android": {
+            "minSdkVersion": 26,
+            "compileSdkVersion": 35
+          }
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }
