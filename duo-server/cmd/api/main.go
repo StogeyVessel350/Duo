@@ -65,6 +65,14 @@ func main() {
 
 		r.Delete("/auth/logout", h.Logout)
 		r.Get("/me", h.GetMe)
+		r.Get("/me/profile", h.GetProfile)
+		r.Put("/me/profile", h.UpsertProfile)
+
+		r.Get("/exercises", h.ListExercises)
+		r.Post("/exercises", h.CreateExercise)
+		r.Get("/exercises/{exerciseID}", h.GetExercise)
+		r.Patch("/exercises/{exerciseID}", h.UpdateExercise)
+		r.Delete("/exercises/{exerciseID}", h.DeleteExercise)
 
 		r.Post("/workouts", h.CreateWorkout)
 		r.Get("/workouts", h.ListWorkouts)

@@ -12,20 +12,28 @@ import (
 )
 
 type repRequest struct {
-	RepNumber    int      `json:"rep_number"`
-	PeakG        *float64 `json:"peak_g"`
-	ConcentricMs *int     `json:"concentric_ms"`
-	EccentricMs  *int     `json:"eccentric_ms"`
+	RepNumber        int      `json:"rep_number"`
+	PeakG            *float64 `json:"peak_g"`
+	ConcentricMs     *int     `json:"concentric_ms"`
+	EccentricMs      *int     `json:"eccentric_ms"`
+	MeanVelocityMs   *float64 `json:"mean_velocity_ms"`
+	PeakVelocityMs   *float64 `json:"peak_velocity_ms"`
+	RangeOfMotionDeg *float64 `json:"range_of_motion_deg"`
+	SymmetryScore    *float64 `json:"symmetry_score"`
 }
 
 type repResponse struct {
-	ID           string    `json:"id"`
-	SetID        string    `json:"set_id"`
-	RepNumber    int       `json:"rep_number"`
-	PeakG        *float64  `json:"peak_g"`
-	ConcentricMs *int      `json:"concentric_ms"`
-	EccentricMs  *int      `json:"eccentric_ms"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID               string    `json:"id"`
+	SetID            string    `json:"set_id"`
+	RepNumber        int       `json:"rep_number"`
+	PeakG            *float64  `json:"peak_g"`
+	ConcentricMs     *int      `json:"concentric_ms"`
+	EccentricMs      *int      `json:"eccentric_ms"`
+	MeanVelocityMs   *float64  `json:"mean_velocity_ms"`
+	PeakVelocityMs   *float64  `json:"peak_velocity_ms"`
+	RangeOfMotionDeg *float64  `json:"range_of_motion_deg"`
+	SymmetryScore    *float64  `json:"symmetry_score"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 // ownsSet returns true if the set belongs to workoutID which belongs to userID.
@@ -78,11 +86,18 @@ func (h *Handler) CreateRep(w http.ResponseWriter, r *http.Request) {
 	for _, req := range reps {
 		var rep repResponse
 		err := tx.QueryRow(r.Context(),
-			`INSERT INTO reps (set_id, rep_number, peak_g, concentric_ms, eccentric_ms)
-			 VALUES ($1, $2, $3, $4, $5)
-			 RETURNING id, set_id, rep_number, peak_g, concentric_ms, eccentric_ms, created_at`,
+			`INSERT INTO reps
+			 (set_id, rep_number, peak_g, concentric_ms, eccentric_ms,
+			  mean_velocity_ms, peak_velocity_ms, range_of_motion_deg, symmetry_score)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			 RETURNING id, set_id, rep_number, peak_g, concentric_ms, eccentric_ms,
+			           mean_velocity_ms, peak_velocity_ms, range_of_motion_deg, symmetry_score, created_at`,
 			setID, req.RepNumber, req.PeakG, req.ConcentricMs, req.EccentricMs,
-		).Scan(&rep.ID, &rep.SetID, &rep.RepNumber, &rep.PeakG, &rep.ConcentricMs, &rep.EccentricMs, &rep.CreatedAt)
+			req.MeanVelocityMs, req.PeakVelocityMs, req.RangeOfMotionDeg, req.SymmetryScore,
+		).Scan(
+			&rep.ID, &rep.SetID, &rep.RepNumber, &rep.PeakG, &rep.ConcentricMs, &rep.EccentricMs,
+			&rep.MeanVelocityMs, &rep.PeakVelocityMs, &rep.RangeOfMotionDeg, &rep.SymmetryScore, &rep.CreatedAt,
+		)
 		if err != nil {
 			internalErr(w, err)
 			return
@@ -107,7 +122,8 @@ func (h *Handler) ListReps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := h.db.Query(r.Context(),
-		`SELECT id, set_id, rep_number, peak_g, concentric_ms, eccentric_ms, created_at
+		`SELECT id, set_id, rep_number, peak_g, concentric_ms, eccentric_ms,
+		        mean_velocity_ms, peak_velocity_ms, range_of_motion_deg, symmetry_score, created_at
 		 FROM reps WHERE set_id = $1 ORDER BY rep_number`,
 		setID,
 	)
@@ -120,7 +136,10 @@ func (h *Handler) ListReps(w http.ResponseWriter, r *http.Request) {
 	reps := make([]repResponse, 0)
 	for rows.Next() {
 		var rep repResponse
-		if err := rows.Scan(&rep.ID, &rep.SetID, &rep.RepNumber, &rep.PeakG, &rep.ConcentricMs, &rep.EccentricMs, &rep.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&rep.ID, &rep.SetID, &rep.RepNumber, &rep.PeakG, &rep.ConcentricMs, &rep.EccentricMs,
+			&rep.MeanVelocityMs, &rep.PeakVelocityMs, &rep.RangeOfMotionDeg, &rep.SymmetryScore, &rep.CreatedAt,
+		); err != nil {
 			internalErr(w, err)
 			return
 		}

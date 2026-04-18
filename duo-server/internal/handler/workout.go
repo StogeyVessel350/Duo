@@ -11,12 +11,11 @@ import (
 	"duo-server/internal/middleware"
 )
 
-
-
 type workoutRequest struct {
 	StartedAt       time.Time  `json:"started_at"`
 	EndedAt         *time.Time `json:"ended_at"`
 	DurationSeconds *int       `json:"duration_seconds"`
+	BodyWeightKg    *float64   `json:"body_weight_kg"`
 	LocationLat     *float64   `json:"location_lat"`
 	LocationLng     *float64   `json:"location_lng"`
 	LocationName    *string    `json:"location_name"`
@@ -29,6 +28,7 @@ type workoutResponse struct {
 	StartedAt       time.Time  `json:"started_at"`
 	EndedAt         *time.Time `json:"ended_at"`
 	DurationSeconds *int       `json:"duration_seconds"`
+	BodyWeightKg    *float64   `json:"body_weight_kg"`
 	LocationLat     *float64   `json:"location_lat"`
 	LocationLng     *float64   `json:"location_lng"`
 	LocationName    *string    `json:"location_name"`
@@ -42,13 +42,14 @@ func scanWorkout(row scanner) (workoutResponse, error) {
 	var wo workoutResponse
 	err := row.Scan(
 		&wo.ID, &wo.UserID, &wo.StartedAt, &wo.EndedAt,
-		&wo.DurationSeconds, &wo.LocationLat, &wo.LocationLng,
-		&wo.LocationName, &wo.Notes, &wo.CreatedAt,
+		&wo.DurationSeconds, &wo.BodyWeightKg,
+		&wo.LocationLat, &wo.LocationLng, &wo.LocationName,
+		&wo.Notes, &wo.CreatedAt,
 	)
 	return wo, err
 }
 
-const workoutCols = `id, user_id, started_at, ended_at, duration_seconds, location_lat, location_lng, location_name, notes, created_at`
+const workoutCols = `id, user_id, started_at, ended_at, duration_seconds, body_weight_kg, location_lat, location_lng, location_name, notes, created_at`
 
 func (h *Handler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	userID, _ := middleware.UserIDFromContext(r.Context())
@@ -62,10 +63,10 @@ func (h *Handler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wo, err := scanWorkout(h.db.QueryRow(r.Context(),
-		`INSERT INTO workouts (user_id, started_at, ended_at, duration_seconds, location_lat, location_lng, location_name, notes)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`INSERT INTO workouts (user_id, started_at, ended_at, duration_seconds, body_weight_kg, location_lat, location_lng, location_name, notes)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		 RETURNING `+workoutCols,
-		userID, req.StartedAt, req.EndedAt, req.DurationSeconds,
+		userID, req.StartedAt, req.EndedAt, req.DurationSeconds, req.BodyWeightKg,
 		req.LocationLat, req.LocationLng, req.LocationName, req.Notes,
 	))
 	if err != nil {
@@ -136,13 +137,14 @@ func (h *Handler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 		`UPDATE workouts SET
 			ended_at = $3,
 			duration_seconds = $4,
-			location_lat = $5,
-			location_lng = $6,
-			location_name = $7,
-			notes = $8
+			body_weight_kg = $5,
+			location_lat = $6,
+			location_lng = $7,
+			location_name = $8,
+			notes = $9
 		 WHERE id = $1 AND user_id = $2
 		 RETURNING `+workoutCols,
-		workoutID, userID, req.EndedAt, req.DurationSeconds,
+		workoutID, userID, req.EndedAt, req.DurationSeconds, req.BodyWeightKg,
 		req.LocationLat, req.LocationLng, req.LocationName, req.Notes,
 	))
 	if err == pgx.ErrNoRows {

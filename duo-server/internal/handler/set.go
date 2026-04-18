@@ -16,6 +16,9 @@ type setRequest struct {
 	SetNumber    int      `json:"set_number"`
 	WeightKg     *float64 `json:"weight_kg"`
 	RPE          *float64 `json:"rpe"`
+	RestSeconds  *int     `json:"rest_seconds"`
+	RepCount     *int     `json:"rep_count"`
+	BarType      *string  `json:"bar_type"`
 	Notes        *string  `json:"notes"`
 }
 
@@ -26,17 +29,24 @@ type setResponse struct {
 	SetNumber    int       `json:"set_number"`
 	WeightKg     *float64  `json:"weight_kg"`
 	RPE          *float64  `json:"rpe"`
+	RestSeconds  *int      `json:"rest_seconds"`
+	RepCount     *int      `json:"rep_count"`
+	BarType      *string   `json:"bar_type"`
 	Notes        *string   `json:"notes"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
 func scanSet(row scanner) (setResponse, error) {
 	var s setResponse
-	err := row.Scan(&s.ID, &s.WorkoutID, &s.ExerciseName, &s.SetNumber, &s.WeightKg, &s.RPE, &s.Notes, &s.CreatedAt)
+	err := row.Scan(
+		&s.ID, &s.WorkoutID, &s.ExerciseName, &s.SetNumber,
+		&s.WeightKg, &s.RPE, &s.RestSeconds, &s.RepCount, &s.BarType,
+		&s.Notes, &s.CreatedAt,
+	)
 	return s, err
 }
 
-const setCols = `id, workout_id, exercise_name, set_number, weight_kg, rpe, notes, created_at`
+const setCols = `id, workout_id, exercise_name, set_number, weight_kg, rpe, rest_seconds, rep_count, bar_type, notes, created_at`
 
 // ownsWorkout returns true if the workout belongs to userID, writing a 404 response if not.
 func (h *Handler) ownsWorkout(w http.ResponseWriter, r *http.Request, workoutID, userID string) bool {
@@ -75,10 +85,11 @@ func (h *Handler) CreateSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s, err := scanSet(h.db.QueryRow(r.Context(),
-		`INSERT INTO sets (workout_id, exercise_name, set_number, weight_kg, rpe, notes)
-		 VALUES ($1, $2, $3, $4, $5, $6)
+		`INSERT INTO sets (workout_id, exercise_name, set_number, weight_kg, rpe, rest_seconds, rep_count, bar_type, notes)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		 RETURNING `+setCols,
-		workoutID, req.ExerciseName, req.SetNumber, req.WeightKg, req.RPE, req.Notes,
+		workoutID, req.ExerciseName, req.SetNumber, req.WeightKg, req.RPE,
+		req.RestSeconds, req.RepCount, req.BarType, req.Notes,
 	))
 	if err != nil {
 		internalErr(w, err)
@@ -155,11 +166,16 @@ func (h *Handler) UpdateSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s, err := scanSet(h.db.QueryRow(r.Context(),
-		`UPDATE sets SET exercise_name = $3, set_number = $4, weight_kg = $5, rpe = $6, notes = $7
+		`UPDATE sets SET
+			exercise_name = $3, set_number = $4,
+			weight_kg = $5, rpe = $6, rest_seconds = $7, rep_count = $8, bar_type = $9, notes = $10
 		 FROM workouts w
-		 WHERE sets.id = $1 AND sets.workout_id = $2 AND w.id = sets.workout_id AND w.user_id = $8
+		 WHERE sets.id = $1 AND sets.workout_id = $2 AND w.id = sets.workout_id AND w.user_id = $11
 		 RETURNING sets.`+setCols,
-		setID, workoutID, req.ExerciseName, req.SetNumber, req.WeightKg, req.RPE, req.Notes, userID,
+		setID, workoutID,
+		req.ExerciseName, req.SetNumber,
+		req.WeightKg, req.RPE, req.RestSeconds, req.RepCount, req.BarType, req.Notes,
+		userID,
 	))
 	if err == pgx.ErrNoRows {
 		respondErr(w, http.StatusNotFound, "set not found")
