@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -96,5 +97,23 @@ func NewRefreshToken() (token, hash string, err error) {
 
 func HashRefreshToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+// GenerateVerificationCode returns a 6-digit code and its SHA-256 hex hash.
+func GenerateVerificationCode() (code, hash string, err error) {
+	b := make([]byte, 4)
+	if _, err = rand.Read(b); err != nil {
+		return
+	}
+	num := binary.BigEndian.Uint32(b) % 1_000_000
+	code = fmt.Sprintf("%06d", num)
+	sum := sha256.Sum256([]byte(code))
+	hash = hex.EncodeToString(sum[:])
+	return
+}
+
+func HashVerificationCode(code string) string {
+	sum := sha256.Sum256([]byte(code))
 	return hex.EncodeToString(sum[:])
 }

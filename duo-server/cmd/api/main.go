@@ -24,6 +24,10 @@ func main() {
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET not set")
 	}
+	resendKey := os.Getenv("RESEND_API_KEY")
+	if resendKey == "" {
+		log.Fatal("RESEND_API_KEY not set")
+	}
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -46,7 +50,7 @@ func main() {
 	}
 	log.Println("migrations ok")
 
-	h := handler.New(pool, jwtSecret)
+	h := handler.New(pool, jwtSecret, resendKey)
 	mw := middleware.New(jwtSecret)
 
 	r := chi.NewRouter()
@@ -64,6 +68,8 @@ func main() {
 		r.Use(mw.RequireAuth)
 
 		r.Delete("/auth/logout", h.Logout)
+		r.Post("/auth/verify-email", h.VerifyEmail)
+		r.Post("/auth/resend-verification", h.ResendVerification)
 		r.Get("/me", h.GetMe)
 		r.Get("/me/profile", h.GetProfile)
 		r.Put("/me/profile", h.UpsertProfile)

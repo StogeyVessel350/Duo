@@ -21,7 +21,8 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email.trim().toLowerCase(), password);
-      router.replace('/(app)');
+      const { emailVerified } = useAuthStore.getState();
+      router.replace(emailVerified ? '/(app)' : '/verify');
     } catch (e: any) {
       setError(e.message || 'Login failed');
     } finally {
