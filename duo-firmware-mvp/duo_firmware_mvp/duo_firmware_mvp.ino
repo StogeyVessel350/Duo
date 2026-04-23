@@ -43,6 +43,10 @@
 #include "MPU6050.h"
 
 // ─── Config ──────────────────────────────────────────────────────────────────
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 10  // XIAO ESP32-C3 onboard LED
+#endif
+
 static const char *DEVICE_NAME   = "DUO-mvp";
 static const uint16_t SAMPLE_HZ  = 100;
 static const uint32_t SAMPLE_US  = 1000000UL / SAMPLE_HZ;

@@ -1,125 +1,162 @@
-import { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '@/auth/store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { TOKENS } from '@/theme';
+import { useAuth } from '@/context/AuthContext';
+
+const CODE_LEN = 6;
 
 export default function VerifyScreen() {
-  const [code, setCode]       = useState('');
-  const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
-  const [sent, setSent]       = useState(false);
-
-  const { verifyEmail, resendVerification } = useAuthStore();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { verifyEmail, pendingEmail } = useAuth();
 
-  const handleVerify = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      await verifyEmail(code.trim());
-      router.replace('/(app)');
-    } catch (e: any) {
-      setError(e.message || 'Invalid code');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [digits, setDigits] = useState<string[]>(Array(CODE_LEN).fill(''));
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [resent, setResent] = useState(false);
+  const inputs = useRef<(TextInput | null)[]>([]);
 
-  const handleResend = async () => {
-    setResending(true);
-    setSent(false);
-    try {
-      await resendVerification();
-      setSent(true);
-    } catch {
-      setError('Could not resend — try again');
-    } finally {
-      setResending(false);
+  const T = TOKENS.color;
+
+  const code = digits.join('');
+
+  useEffect(() => {
+    setTimeout(() => inputs.current[0]?.focus(), 200);
+  }, []);
+
+  function handleDigit(text: string, index: number) {
+    const char = text.replace(/\D/g, '').slice(-1);
+    const next = [...digits];
+    next[index] = char;
+    setDigits(next);
+    setError('');
+    if (char && index < CODE_LEN - 1) {
+      inputs.current[index + 1]?.focus();
     }
-  };
+    if (next.every(d => d !== '') && char) {
+      submitCode(next.join(''));
+    }
+  }
+
+  function handleKeyPress(key: string, index: number) {
+    if (key === 'Backspace' && !digits[index] && index > 0) {
+      inputs.current[index - 1]?.focus();
+    }
+  }
+
+  async function submitCode(c: string) {
+    setBusy(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const ok = await verifyEmail(c);
+    setBusy(false);
+    if (ok) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace('/(auth)/setup' as any);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError('Invalid code. Enter any 6-digit number.');
+      setDigits(Array(CODE_LEN).fill(''));
+      inputs.current[0]?.focus();
+    }
+  }
+
+  async function resend() {
+    Haptics.selectionAsync();
+    setResent(true);
+    setDigits(Array(CODE_LEN).fill(''));
+    setError('');
+    inputs.current[0]?.focus();
+    setTimeout(() => setResent(false), 3000);
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.inner}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>check your email</Text>
-          <Text style={styles.subtitle}>
-            we sent a 6-digit code — enter it below to verify your account
+    <View style={[s.root, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 40 }]}>
+      <Pressable style={s.backBtn} onPress={() => { Haptics.selectionAsync(); router.back(); }}>
+        <Text style={s.backText}>← Back</Text>
+      </Pressable>
+
+      <View style={s.content}>
+        <Text style={s.emoji}>📬</Text>
+        <Text style={s.title}>Check your inbox.</Text>
+        <Text style={s.subtitle}>
+          We sent a 6-digit code to{'\n'}
+          <Text style={[s.subtitle, { color: T.fg.primary, fontWeight: '600' }]}>
+            {pendingEmail || 'your email'}
           </Text>
+        </Text>
+
+        <View style={s.codeRow}>
+          {digits.map((d, i) => (
+            <TextInput
+              key={i}
+              ref={r => { inputs.current[i] = r; }}
+              style={[s.digitInput, d && s.digitFilled]}
+              value={d}
+              onChangeText={t => handleDigit(t, i)}
+              onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
+              keyboardType="number-pad"
+              maxLength={2}
+              selectTextOnFocus
+              caretHidden
+            />
+          ))}
         </View>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.codeInput}
-            placeholder="000000"
-            placeholderTextColor="#333"
-            value={code}
-            onChangeText={setCode}
-            keyboardType="number-pad"
-            maxLength={6}
-            textAlign="center"
-          />
+        {!!error && <Text style={s.errorText}>{error}</Text>}
 
-          {error && <Text style={styles.error}>{error}</Text>}
-          {sent  && <Text style={styles.success}>new code sent</Text>}
+        {busy && (
+          <View style={s.busyRow}>
+            <ActivityIndicator color={T.accent.primary} />
+            <Text style={s.busyText}>Verifying…</Text>
+          </View>
+        )}
 
-          <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-            onPress={handleVerify}
-            disabled={loading || code.length !== 6}
-          >
-            {loading
-              ? <ActivityIndicator color="#000" />
-              : <Text style={styles.btnText}>verify</Text>}
-          </Pressable>
-        </View>
-
-        <Pressable onPress={handleResend} disabled={resending}>
-          <Text style={styles.link}>
-            {resending ? 'sending…' : 'resend code'}
+        <Pressable onPress={resend} disabled={resent} style={{ marginTop: TOKENS.space.xl }}>
+          <Text style={[s.resendText, resent && { opacity: 0.4 }]}>
+            {resent ? 'Code resent ✓' : "Didn't receive it? Resend"}
           </Text>
         </Pressable>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+        <Text style={s.hint}>For this MVP, any 6-digit number works.</Text>
+      </View>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b0b0e' },
-  inner: { flex: 1, paddingHorizontal: 24, justifyContent: 'center', gap: 32 },
-  header: { gap: 8 },
-  title: { color: '#fff', fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
-  subtitle: { color: '#888', fontSize: 14, lineHeight: 20 },
-  form: { gap: 12 },
-  codeInput: {
-    backgroundColor: '#141418',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#2a2a2e',
-    borderRadius: 12,
-    paddingVertical: 18,
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '700',
-    letterSpacing: 12,
+const T = TOKENS.color;
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: T.bg.base, paddingHorizontal: TOKENS.space.xl },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 8 },
+  backText: { fontSize: 14, color: T.fg.secondary },
+  content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 },
+  emoji: { fontSize: 48, marginBottom: TOKENS.space.lg },
+  title: {
+    fontSize: 28, fontWeight: '600', letterSpacing: -0.02 * 28,
+    color: T.fg.primary, textAlign: 'center', marginBottom: TOKENS.space.sm,
   },
-  error:   { color: '#fca5a5', fontSize: 13 },
-  success: { color: '#4ade80', fontSize: 13 },
-  btn: {
-    backgroundColor: '#4ade80',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 4,
+  subtitle: {
+    fontSize: 15, color: T.fg.secondary, textAlign: 'center',
+    lineHeight: 22, marginBottom: TOKENS.space.xxl,
   },
-  btnPressed: { opacity: 0.85 },
-  btnText: { color: '#000', fontSize: 16, fontWeight: '700' },
-  link: { color: '#4ade80', fontSize: 13, textAlign: 'center', fontWeight: '600' },
+  codeRow: { flexDirection: 'row', gap: 10 },
+  digitInput: {
+    width: 44, height: 56, borderRadius: TOKENS.radius.md,
+    backgroundColor: T.bg.elevated, borderWidth: 1.5, borderColor: T.border.subtle,
+    textAlign: 'center', fontSize: 22, fontWeight: '600', color: T.fg.primary,
+    fontFamily: 'JetBrainsMono_400Regular',
+  },
+  digitFilled: { borderColor: T.accent.primary },
+  errorText: { fontSize: 13, color: '#ff6b6b', marginTop: TOKENS.space.md, textAlign: 'center' },
+  busyRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: TOKENS.space.md },
+  busyText: { fontSize: 14, color: T.fg.secondary },
+  resendText: { fontSize: 14, color: T.accent.primary, fontWeight: '500' },
+  hint: {
+    fontSize: 11, color: T.fg.tertiary, marginTop: TOKENS.space.lg,
+    fontFamily: 'JetBrainsMono_400Regular', textAlign: 'center',
+  },
 });

@@ -1,31 +1,49 @@
-import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { Stack } from 'expo-router';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_600SemiBold,
+} from '@expo-google-fonts/jetbrains-mono';
+import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useAuthStore } from '@/auth/store';
+import { Stack } from 'expo-router';
+import { ThemeProvider } from '@/theme';
+import { UnitsProvider } from '@/context/UnitsContext';
+import { ProfileProvider } from '@/context/ProfileContext';
+import { AuthProvider } from '@/context/AuthContext';
+import { TOKENS } from '@/theme';
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { isLoading, checkAuth } = useAuthStore();
+  const [fontsLoaded] = useFonts({
+    JetBrainsMono_400Regular,
+    JetBrainsMono_600SemiBold,
+  });
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
 
-  if (isLoading) {
-    return (
-      <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: '#0b0b0e', justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color="#4ade80" />
-        </View>
-      </SafeAreaProvider>
-    );
-  }
+  if (!fontsLoaded) return null;
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0b0b0e' } }} />
+      <ThemeProvider>
+        <UnitsProvider>
+          <ProfileProvider>
+            <AuthProvider>
+              <StatusBar style="light" />
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: TOKENS.color.bg.base } }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(app)" />
+              </Stack>
+            </AuthProvider>
+          </ProfileProvider>
+        </UnitsProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

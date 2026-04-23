@@ -1,15 +1,23 @@
-node_modules/
+# Expo
+expo-env.d.ts
 .expo/
-dist/
-npm-debug.*
+
+# Dependencies
+node_modules/
+api/node_modules/
+
+# Native build artifacts
+ios/
+android/
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
-*.orig.*
-web-build/
-ios/
-android/
+
+# Environment
 .env
 .env.local
+
+# OS
+.DS_Store

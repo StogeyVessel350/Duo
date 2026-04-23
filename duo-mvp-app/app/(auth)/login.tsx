@@ -1,117 +1,207 @@
-import { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView,
+  Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '@/auth/store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { TOKENS } from '@/theme';
+import { useAuth } from '@/context/AuthContext';
+import { DuoMark } from '@/components/shell';
 
 export default function LoginScreen() {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-
-  const { login } = useAuthStore();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { signIn, signUp } = useAuth();
 
-  const handleLogin = async () => {
-    setError(null);
-    setLoading(true);
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
+  const T = TOKENS.color;
+
+  function validate(): string | null {
+    if (!email.trim()) return 'Email is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Enter a valid email address.';
+    if (password.length < 6) return 'Password must be at least 6 characters.';
+    if (mode === 'signup' && password !== confirm) return 'Passwords do not match.';
+    return null;
+  }
+
+  async function handleSubmit() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setError('');
+    const err = validate();
+    if (err) { setError(err); return; }
+    setBusy(true);
     try {
-      await login(email.trim().toLowerCase(), password);
-      const { emailVerified } = useAuthStore.getState();
-      router.replace(emailVerified ? '/(app)' : '/verify');
-    } catch (e: any) {
-      setError(e.message || 'Login failed');
+      if (mode === 'signup') {
+        await signUp(email.trim().toLowerCase(), password);
+        router.push('/(auth)/verify' as any);
+      } else {
+        const ok = await signIn(email.trim().toLowerCase(), password);
+        if (!ok) {
+          setError('Incorrect email or password.');
+        }
+        // AuthContext change will trigger root index to redirect automatically
+      }
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
-  };
+  }
+
+  function switchMode() {
+    Haptics.selectionAsync();
+    setMode(m => m === 'signin' ? 'signup' : 'signin');
+    setError('');
+    setPassword('');
+    setConfirm('');
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.inner}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: T.bg.base }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={[s.container, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>DUO</Text>
-          <Text style={styles.subtitle}>welcome back</Text>
+        <View style={s.logoRow}>
+          <DuoMark size={16} />
         </View>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="email"
-            placeholderTextColor="#555"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="password"
-            placeholderTextColor="#555"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="password"
-          />
+        <Text style={s.title}>{mode === 'signin' ? 'Welcome back.' : 'Create account.'}</Text>
+        <Text style={s.subtitle}>
+          {mode === 'signin' ? 'Sign in to your DUO account.' : 'Start training smarter.'}
+        </Text>
 
-          {error && <Text style={styles.error}>{error}</Text>}
+        <View style={s.form}>
+          <View style={s.fieldGroup}>
+            <Text style={s.label}>EMAIL</Text>
+            <TextInput
+              style={s.input}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              placeholderTextColor={T.fg.tertiary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              blurOnSubmit={false}
+            />
+          </View>
+
+          <View style={s.fieldGroup}>
+            <Text style={s.label}>PASSWORD</Text>
+            <TextInput
+              ref={passwordRef}
+              style={s.input}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Min. 6 characters"
+              placeholderTextColor={T.fg.tertiary}
+              secureTextEntry
+              returnKeyType={mode === 'signup' ? 'next' : 'done'}
+              onSubmitEditing={() => mode === 'signup' ? confirmRef.current?.focus() : handleSubmit()}
+              blurOnSubmit={mode !== 'signup'}
+            />
+          </View>
+
+          {mode === 'signup' && (
+            <View style={s.fieldGroup}>
+              <Text style={s.label}>CONFIRM PASSWORD</Text>
+              <TextInput
+                ref={confirmRef}
+                style={s.input}
+                value={confirm}
+                onChangeText={setConfirm}
+                placeholder="Repeat password"
+                placeholderTextColor={T.fg.tertiary}
+                secureTextEntry
+                returnKeyType="done"
+                onSubmitEditing={handleSubmit}
+              />
+            </View>
+          )}
+
+          {!!error && <Text style={s.errorText}>{error}</Text>}
 
           <Pressable
-            style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-            onPress={handleLogin}
-            disabled={loading}
+            style={[s.primaryBtn, busy && { opacity: 0.6 }]}
+            onPress={handleSubmit}
+            disabled={busy}
           >
-            {loading
-              ? <ActivityIndicator color="#000" />
-              : <Text style={styles.btnText}>log in</Text>}
+            {busy
+              ? <ActivityIndicator color={T.accent.onPrimary} />
+              : <Text style={s.primaryBtnText}>{mode === 'signin' ? 'Sign in' : 'Create account'}</Text>
+            }
           </Pressable>
         </View>
 
-        <Pressable onPress={() => router.push('/register')}>
-          <Text style={styles.link}>
-            don't have an account? <Text style={styles.linkBold}>create one</Text>
+        <View style={s.switchRow}>
+          <Text style={s.switchLabel}>
+            {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}
           </Text>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <Pressable onPress={switchMode}>
+            <Text style={s.switchLink}>{mode === 'signin' ? 'Sign up' : 'Sign in'}</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b0b0e' },
-  inner: { flex: 1, paddingHorizontal: 24, justifyContent: 'center', gap: 32 },
-  header: { gap: 4 },
-  title: { color: '#fff', fontSize: 40, fontWeight: '700', letterSpacing: -1 },
-  subtitle: { color: '#888', fontSize: 15 },
-  form: { gap: 12 },
+const T = TOKENS.color;
+const s = StyleSheet.create({
+  container: {
+    flexGrow: 1, paddingHorizontal: TOKENS.space.xl,
+  },
+  logoRow: {
+    alignItems: 'flex-start', marginBottom: TOKENS.space.xxl,
+  },
+  title: {
+    fontSize: 34, fontWeight: '600', letterSpacing: -0.02 * 34,
+    color: T.fg.primary, marginBottom: TOKENS.space.sm,
+  },
+  subtitle: {
+    fontSize: 16, color: T.fg.secondary, marginBottom: TOKENS.space.xxl,
+  },
+  form: { gap: TOKENS.space.lg },
+  fieldGroup: { gap: TOKENS.space.xs ?? 6 },
+  label: {
+    fontFamily: 'JetBrainsMono_400Regular', fontSize: 10, letterSpacing: 0.1 * 10,
+    color: T.fg.tertiary, textTransform: 'uppercase',
+  },
   input: {
-    backgroundColor: '#141418',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#2a2a2e',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#fff',
-    fontSize: 15,
+    backgroundColor: T.bg.elevated, borderWidth: 1, borderColor: T.border.subtle,
+    borderRadius: TOKENS.radius.md, paddingHorizontal: 14, paddingVertical: 14,
+    fontSize: 16, color: T.fg.primary,
   },
-  error: { color: '#fca5a5', fontSize: 13 },
-  btn: {
-    backgroundColor: '#4ade80',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 4,
+  errorText: {
+    fontSize: 13, color: '#ff6b6b', textAlign: 'center',
   },
-  btnPressed: { opacity: 0.85 },
-  btnText: { color: '#000', fontSize: 16, fontWeight: '700' },
-  link: { color: '#555', fontSize: 13, textAlign: 'center' },
-  linkBold: { color: '#4ade80', fontWeight: '600' },
+  primaryBtn: {
+    backgroundColor: T.accent.primary, borderRadius: TOKENS.radius.md,
+    paddingVertical: 16, alignItems: 'center', marginTop: TOKENS.space.sm,
+  },
+  primaryBtnText: {
+    fontSize: 16, fontWeight: '600', color: T.accent.onPrimary,
+  },
+  switchRow: {
+    flexDirection: 'row', justifyContent: 'center', gap: 6,
+    marginTop: TOKENS.space.xxl, flexWrap: 'wrap',
+  },
+  switchLabel: { fontSize: 14, color: T.fg.secondary },
+  switchLink: { fontSize: 14, fontWeight: '600', color: T.accent.primary },
 });

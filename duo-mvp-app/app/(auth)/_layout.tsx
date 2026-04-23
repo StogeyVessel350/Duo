@@ -1,9 +1,12 @@
-import { Redirect, Stack } from 'expo-router';
-import { useAuthStore } from '@/auth/store';
+import { Stack } from 'expo-router';
+import { TOKENS } from '@/theme';
 
 export default function AuthLayout() {
-  const { isAuthenticated, emailVerified } = useAuthStore();
-  // Only redirect away if fully authenticated and verified
-  if (isAuthenticated && emailVerified) return <Redirect href="/(app)" />;
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0b0b0e' } }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: TOKENS.color.bg.base }, animation: 'slide_from_right' }}>
+      <Stack.Screen name="login" />
+      <Stack.Screen name="verify" />
+      <Stack.Screen name="setup" />
+    </Stack>
+  );
 }
