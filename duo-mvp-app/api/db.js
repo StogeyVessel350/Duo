@@ -26,7 +26,7 @@ async function initSchema() {
     CREATE TABLE IF NOT EXISTS workouts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      date DATE NOT NULL,
+      workout_date DATE NOT NULL,
       focus TEXT NOT NULL,
       duration_min INTEGER NOT NULL DEFAULT 0,
       total_volume_kg REAL NOT NULL DEFAULT 0,
@@ -37,7 +37,7 @@ async function initSchema() {
   `);
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_workouts_user_date
-      ON workouts(user_id, date DESC)
+      ON workouts(user_id, workout_date DESC)
   `);
   console.log('Schema ready.');
 }

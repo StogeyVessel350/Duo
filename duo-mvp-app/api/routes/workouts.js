@@ -9,13 +9,13 @@ router.use(requireAuth);
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, date, focus, duration_min, total_volume_kg, has_pr, exercises, created_at
-       FROM workouts WHERE user_id = $1 ORDER BY date DESC, created_at DESC`,
+      `SELECT id, workout_date, focus, duration_min, total_volume_kg, has_pr, exercises, created_at
+       FROM workouts WHERE user_id = $1 ORDER BY workout_date DESC, created_at DESC`,
       [req.user.userId]
     );
     res.json(result.rows.map(row => ({
       id: row.id,
-      date: row.date.toISOString().slice(0, 10),
+      date: row.workout_date.toISOString().slice(0, 10),
       focus: row.focus,
       durationMin: row.duration_min,
       totalVolumeKg: row.total_volume_kg,
@@ -39,7 +39,7 @@ router.get('/:id', async (req, res) => {
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json({
       id: row.id,
-      date: row.date.toISOString().slice(0, 10),
+      date: row.workout_date.toISOString().slice(0, 10),
       focus: row.focus,
       durationMin: row.duration_min,
       totalVolumeKg: row.total_volume_kg,
@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO workouts (user_id, date, focus, duration_min, total_volume_kg, has_pr, exercises)
+      `INSERT INTO workouts (user_id, workout_date, focus, duration_min, total_volume_kg, has_pr, exercises)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
       [req.user.userId, date, focus, durationMin ?? 0, totalVolumeKg ?? 0, hasPR ?? false, JSON.stringify(exercises ?? [])]
