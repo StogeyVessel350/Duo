@@ -23,18 +23,18 @@ async function initSchema() {
     )
   `);
 
-  // Drop workouts table if it was created with old 'date' column instead of 'workout_date'
-  await pool.query(`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'workouts' AND column_name = 'date'
-      ) THEN
-        DROP TABLE workouts CASCADE;
-      END IF;
-    END $$
+  // Check if workouts table exists with correct schema
+  const cols = await pool.query(`
+    SELECT column_name FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'workouts'
   `);
+  const colNames = cols.rows.map(r => r.column_name);
+
+  if (colNames.length > 0 && !colNames.includes('workout_date')) {
+    // Table exists with old schema — drop it (no real data, service never ran successfully)
+    console.log('Dropping workouts table with old schema, columns:', colNames);
+    await pool.query('DROP TABLE IF EXISTS workouts CASCADE');
+  }
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS workouts (
