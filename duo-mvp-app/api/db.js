@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL?.includes('railway.internal')
-    ? false  // internal Railway network — no SSL needed
+    ? false
     : { rejectUnauthorized: false },
 });
 
@@ -22,6 +22,20 @@ async function initSchema() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+
+  // Drop workouts table if it was created with old 'date' column instead of 'workout_date'
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'workouts' AND column_name = 'date'
+      ) THEN
+        DROP TABLE workouts CASCADE;
+      END IF;
+    END $$
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS workouts (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -35,22 +49,12 @@ async function initSchema() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  // Migrate: rename old 'date' column to 'workout_date' if it still exists
-  await pool.query(`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name='workouts' AND column_name='date'
-      ) THEN
-        ALTER TABLE workouts RENAME COLUMN date TO workout_date;
-      END IF;
-    END $$
-  `);
+
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_workouts_user_date
       ON workouts(user_id, workout_date DESC)
   `);
+
   console.log('Schema ready.');
 }
 
