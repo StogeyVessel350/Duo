@@ -19,9 +19,15 @@ async function initSchema() {
       weight_kg REAL,
       experience_level INTEGER DEFAULT 2,
       setup_complete BOOLEAN DEFAULT FALSE,
+      reset_code TEXT,
+      reset_code_expires TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+
+  // Add reset columns if upgrading from old schema
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires TIMESTAMPTZ`);
 
   // Check if workouts table exists with correct schema
   const cols = await pool.query(`
