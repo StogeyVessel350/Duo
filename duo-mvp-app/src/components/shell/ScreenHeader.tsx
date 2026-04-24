@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TOKENS } from '@/theme';
 import { Text } from '@/components/primitives';
 import { Icon } from '@/components/primitives';
@@ -15,10 +14,8 @@ interface Props {
 }
 
 export function ScreenHeader({ children, right, title, onBack }: Props) {
-  const insets = useSafeAreaInsets();
-
   return (
-    <View style={[styles.container, { paddingTop: insets.top + TOKENS.space.sm }]}>
+    <View style={[styles.container, { paddingTop: TOKENS.space.sm }]}>
       <View style={styles.row}>
         {/* Left slot */}
         <View style={styles.left}>
