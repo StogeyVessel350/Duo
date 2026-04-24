@@ -115,4 +115,32 @@ router.put('/profile', requireAuth, async (req, res) => {
   }
 });
 
+// POST /auth/reset-request — MVP: accepts any account, no email sent
+router.post('/reset-request', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  // Don't reveal whether account exists — always return ok
+  res.json({ ok: true });
+});
+
+// POST /auth/reset-confirm — MVP: any 6-digit code accepted
+router.post('/reset-confirm', async (req, res) => {
+  const { email, code, password } = req.body;
+  if (!email || !code || !password) return res.status(400).json({ error: 'Missing fields' });
+  if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Invalid code' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password too short' });
+
+  try {
+    const result = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    if (!result.rows[0]) return res.status(404).json({ error: 'No account found with that email' });
+
+    const hash = await bcrypt.hash(password, SALT_ROUNDS);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [hash, email.toLowerCase()]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

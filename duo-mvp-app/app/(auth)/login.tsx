@@ -43,7 +43,12 @@ export default function LoginScreen() {
     setBusy(true);
     try {
       if (mode === 'signup') {
-        await signUp(email.trim().toLowerCase(), password);
+        try {
+          await signUp(email.trim().toLowerCase(), password);
+        } catch (e: any) {
+          setError(e?.message || 'Could not create account.');
+          return;
+        }
         router.push('/(auth)/verify' as any);
       } else {
         const ok = await signIn(email.trim().toLowerCase(), password);
@@ -149,6 +154,12 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
+        {mode === 'signin' && (
+          <Pressable style={s.forgotRow} onPress={() => { Haptics.selectionAsync(); router.push('/(auth)/reset' as any); }}>
+            <Text style={s.forgotLink}>Forgot password?</Text>
+          </Pressable>
+        )}
+
         <View style={s.switchRow}>
           <Text style={s.switchLabel}>
             {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}
@@ -204,4 +215,6 @@ const s = StyleSheet.create({
   },
   switchLabel: { fontSize: 14, color: T.fg.secondary },
   switchLink: { fontSize: 14, fontWeight: '600', color: T.accent.primary },
+  forgotRow: { alignItems: 'center', marginTop: TOKENS.space.lg },
+  forgotLink: { fontSize: 14, color: T.fg.secondary },
 });

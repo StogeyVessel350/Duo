@@ -55,6 +55,12 @@ export const api = {
 
     updateProfile: (data: Partial<ApiUser>) =>
       request<ApiUser>('PUT', '/auth/profile', data),
+
+    requestReset: (email: string) =>
+      request<{ ok: boolean }>('POST', '/auth/reset-request', { email }, false),
+
+    confirmReset: (email: string, code: string, password: string) =>
+      request<{ ok: boolean }>('POST', '/auth/reset-confirm', { email, code, password }, false),
   },
 
   workouts: {
