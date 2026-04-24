@@ -192,12 +192,4 @@ router.post('/reset-confirm', async (req, res) => {
   }
 });
 
-// Temporary admin endpoint — will be removed after use
-router.post('/admin/set-name', async (req, res) => {
-  const { secret, email, name } = req.body;
-  if (secret !== process.env.JWT_SECRET) return res.status(403).json({ error: 'Forbidden' });
-  await pool.query('UPDATE users SET name = $1 WHERE email = $2', [name, email.toLowerCase()]);
-  res.json({ ok: true });
-});
-
 module.exports = router;
