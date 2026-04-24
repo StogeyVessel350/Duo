@@ -35,6 +35,18 @@ async function initSchema() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Migrate: rename old 'date' column to 'workout_date' if it still exists
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='workouts' AND column_name='date'
+      ) THEN
+        ALTER TABLE workouts RENAME COLUMN date TO workout_date;
+      END IF;
+    END $$
+  `);
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_workouts_user_date
       ON workouts(user_id, workout_date DESC)
