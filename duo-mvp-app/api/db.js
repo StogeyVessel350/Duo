@@ -25,7 +25,13 @@ async function initSchema() {
     )
   `);
 
-  // Add reset columns if upgrading from old schema
+  // Ensure all columns exist in case table was created by an older deployment
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS age INTEGER`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm INTEGER`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_kg REAL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_level INTEGER DEFAULT 2`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS setup_complete BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires TIMESTAMPTZ`);
 
